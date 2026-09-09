@@ -10,6 +10,30 @@
 
 namespace OGLCore {
 
+namespace {
+
+/// The #version directive and any precision qualifier the target needs.
+///
+/// Shader files carry no version line of their own: desktop GL wants
+/// "#version 330 core" and WebGL 2 wants "#version 300 es", and nothing
+/// translates between them. Everything else in a shader - layout
+/// qualifiers, instanced attributes, the built-in functions - is common to
+/// both, so injecting the header lets one shader body serve either target.
+const char* VersionHeader(unsigned int type)
+{
+#if defined(__EMSCRIPTEN__)
+	// ES requires an explicit float precision in the fragment stage.
+	return (type == GL_FRAGMENT_SHADER)
+		? "#version 300 es\nprecision highp float;\n"
+		: "#version 300 es\n";
+#else
+	(void)type;
+	return "#version 330 core\n";
+#endif
+}
+
+} // namespace
+
 Shader::Shader(const std::string& filepath)
 	: m_FilePath(filepath)
 {
@@ -64,6 +88,11 @@ ShaderProgramSource Shader::ParseShader(const std::string& filepath)
 				type = ShaderType::VERTEX;
 			else if (line.find("fragment") != std::string::npos)
 				type = ShaderType::FRAGMENT;
+		} else if (line.rfind("#version", 0) == 0) {
+			// Dropped rather than passed through: the version is chosen
+			// per target in VersionHeader. Tolerated so shader files
+			// written for the desktop-only library still work unchanged.
+			continue;
 		} else if (type != ShaderType::NONE) {
 			ss[static_cast<int>(type)] << line << '\n';
 		}
@@ -77,8 +106,9 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
 	if (source.empty())
 		return 0;
 
-	const unsigned int id  = glCreateShader(type);
-	const char*        src = source.c_str();
+	const std::string  full = VersionHeader(type) + source;
+	const unsigned int id   = glCreateShader(type);
+	const char*        src  = full.c_str();
 	GLCall(glShaderSource(id, 1, &src, nullptr));
 	GLCall(glCompileShader(id));
 
