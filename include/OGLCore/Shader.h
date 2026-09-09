@@ -16,6 +16,10 @@ struct ShaderProgramSource
 ///
 /// Source is a single file containing both stages, delimited by
 /// `#shader vertex` and `#shader fragment` lines.
+///
+/// Do not write a `#version` directive: one is injected to match the
+/// target, `#version 330 core` on desktop and `#version 300 es` on WebGL.
+/// Any version line found in the file is ignored.
 class Shader
 {
 public:

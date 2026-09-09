@@ -23,6 +23,12 @@ bool Init(GLProcLoader loader)
 	if (s_Initialized)
 		return true;
 
+#if defined(__EMSCRIPTEN__)
+	// WebGL entry points are already linked. The loader is accepted and
+	// ignored so a consumer needs no #ifdef of its own.
+	(void)loader;
+	s_Initialized = true;
+#else
 	if (!loader) {
 		std::cerr << "[OGLCore] Init: null loader" << std::endl;
 		return false;
@@ -34,6 +40,7 @@ bool Init(GLProcLoader loader)
 	}
 
 	s_Initialized = true;
+#endif
 
 	// Context creation can leave an error queued on some drivers; clear it so
 	// the first real GLCall does not trip the assert on someone else's fault.

@@ -1,15 +1,26 @@
 cmake_minimum_required(VERSION 3.21)
 project(OGLCore VERSION 0.1.0 LANGUAGES C CXX)
 
-option(OGLCORE_BUILD_SANDBOX "Build the OGLCore sandbox demo" ${PROJECT_IS_TOP_LEVEL})
+# The sandbox fetches GLFW for the desktop; a browser build uses Emscripten's
+# own GLFW port instead, so it is off by default there.
+if(EMSCRIPTEN)
+    set(OGLCORE_SANDBOX_DEFAULT OFF)
+else()
+    set(OGLCORE_SANDBOX_DEFAULT ${PROJECT_IS_TOP_LEVEL})
+endif()
+option(OGLCORE_BUILD_SANDBOX "Build the OGLCore sandbox demo" ${OGLCORE_SANDBOX_DEFAULT})
 option(OGLCORE_INSTALL       "Generate install and export rules" ${PROJECT_IS_TOP_LEVEL})
 
-find_package(OpenGL REQUIRED)
+# Emscripten provides the GL entry points itself; there is no library to find
+# and no loader to build.
+if(NOT EMSCRIPTEN)
+    find_package(OpenGL REQUIRED)
+endif()
 
 # ---------------------------------------------------------------------------
 # The library
 # ---------------------------------------------------------------------------
-add_library(OGLCore STATIC
+set(OGLCORE_SOURCES
     src/Core.cpp
     src/Renderer.cpp
     src/Shader.cpp
@@ -18,8 +29,13 @@ add_library(OGLCore STATIC
     src/VertexBuffer.cpp
     src/VertexBufferLayout.cpp
     src/IndexBuffer.cpp
-    vendor/glad/src/gl.c
     vendor/stb_image/stb_image.cpp)
+
+if(NOT EMSCRIPTEN)
+    list(APPEND OGLCORE_SOURCES vendor/glad/src/gl.c)
+endif()
+
+add_library(OGLCore STATIC ${OGLCORE_SOURCES})
 
 add_library(OGLCore::OGLCore ALIAS OGLCore)
 
@@ -35,7 +51,16 @@ target_include_directories(OGLCore
         ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include)
 
 target_compile_features(OGLCore PUBLIC cxx_std_17)
-target_link_libraries(OGLCore PUBLIC OpenGL::GL PRIVATE ${CMAKE_DL_LIBS})
+
+if(EMSCRIPTEN)
+    # WebGL 2 is OpenGL ES 3.0. Requiring it rules out the WebGL 1 fallback,
+    # which has no instanced rendering or vertex array objects in core.
+    target_link_options(OGLCore INTERFACE
+        "-sMIN_WEBGL_VERSION=2"
+        "-sMAX_WEBGL_VERSION=2")
+else()
+    target_link_libraries(OGLCore PUBLIC OpenGL::GL PRIVATE ${CMAKE_DL_LIBS})
+endif()
 
 if(MSVC)
     target_compile_options(OGLCore PRIVATE /W4 /permissive-)
