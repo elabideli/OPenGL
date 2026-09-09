@@ -28,6 +28,12 @@ renderer.Draw(vao, ibo, shader);
 | `Core.h` | Entry-point loading, context info |
 | `Renderer.h` | Draw calls, clear colour, viewport, blending |
 | `Shader.h` | Single-file `#shader vertex` / `#shader fragment` programs |
+
+Shader files carry **no `#version` line**: one is injected to match the
+target, `#version 330 core` on desktop and `#version 300 es` plus a precision
+qualifier on WebGL. Nothing translates between the two, and everything else
+in a shader is common to both, so one body serves either. A version line left
+in a file is ignored rather than rejected.
 | `Texture.h` | 2D textures via stb_image |
 | `VertexArray.h` | VAOs, per-vertex and per-instance attribute buffers |
 | `VertexBuffer.h` | Static and dynamic (streaming) vertex buffers |
@@ -39,6 +45,24 @@ include path, so consumers are not tied to this library's loader choice.
 
 All GL handle owners are move-only: copying is deleted, so a handle can never
 be deleted twice.
+
+## Platforms
+
+Builds with MSVC, clang and Emscripten, warning-free.
+
+For a browser target the library drops glad and uses the WebGL entry points
+the runtime already provides, so `OGLCore::Init` becomes a no-op that still
+accepts a loader - a consumer needs no `#ifdef`:
+
+```cmake
+emcmake cmake -B build-web -G Ninja
+cmake --build build-web
+```
+
+`-sMIN_WEBGL_VERSION=2` is applied as an interface link option, since WebGL 1
+has neither instanced rendering nor vertex array objects in core.
+
+Linux and macOS are written for but not verified on real hardware.
 
 ## Building
 

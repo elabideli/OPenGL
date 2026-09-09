@@ -341,3 +341,6 @@ healthchecksdb
 # CMake
 build/
 out/
+build-clang/
+build-web/
+build-release/

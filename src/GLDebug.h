@@ -4,7 +4,13 @@
 // this is the only place the glad header and the debug macros live, which is
 // what keeps them off the consumer's plate.
 
-#include <glad/gl.h>
+// The browser links the WebGL entry points directly, so there is nothing for
+// a loader to resolve and glad is neither needed nor buildable there.
+#if defined(__EMSCRIPTEN__)
+	#include <GLES3/gl3.h>
+#else
+	#include <glad/gl.h>
+#endif
 
 namespace OGLCore {
 
